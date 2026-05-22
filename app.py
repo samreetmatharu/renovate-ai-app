@@ -4,207 +4,186 @@ import datetime
 from streamlit_mic_recorder import mic_recorder
 
 # --- APP CONFIGURATION ---
-st.set_page_config(page_title="RenovateAI - Contractor Assistant", layout="wide", page_icon="🏗️")
+st.set_page_config(page_title="RenovateAI Pro - Multi-Project Hub", layout="wide", page_icon="🏗️")
 
-st.title("🏗️ RenovateAI: End-to-End Project Assistant")
-st.caption("Speak or upload media to build intelligent quotes, manage databases, and automate your workflow.")
+st.title("🏗️ RenovateAI Pro: Multi-Project Workspace")
+st.caption("A voice-intelligent workspace to manage multiple clients, track sequential trades, and trigger automated follow-ups.")
 
-# --- INITIALZE DATABASE SYSTEM (SESSION STATE) ---
-if 'client_db' not in st.session_state:
-    st.session_state.client_db = {"Name": "John Doe", "Email": "client@example.com", "Phone": "555-0199", "Address": "123 Main St"}
-
-if 'trade_db' not in st.session_state:
-    st.session_state.trade_db = {
-        "Painter": "painter@trades.com",
-        "Electrician": "sparky@trades.com",
-        "Carpenter": "carpenter@trades.com"
+# --- INITIALIZE DATABASE REGISTER (SESSION STATE) ---
+if 'project_registry' not in st.session_state:
+    st.session_state.project_registry = {
+        "John Doe": {
+            "Name": "John Doe",
+            "Email": "client@example.com",
+            "Phone": "555-0199",
+            "Address": "123 Main St",
+            "Trades": {"Painter": "painter@trades.com", "Electrician": "sparky@trades.com", "Carpenter": "carpenter@trades.com"},
+            "Products": [
+                {"Item": "Premium Low-VOC Wall Paint", "Cost": 850.00},
+                {"Item": "Slim Recessed LED Spotlights", "Cost": 450.00},
+                {"Item": "Replacement Window Units", "Cost": 2200.00},
+                {"Item": "Smart Electronic Door Lock", "Cost": 350.00}
+            ],
+            "Reminders": ["Call John to finalize window frame measurements tomorrow."]
+        },
+        "Sarah Jenkins": {
+            "Name": "Sarah Jenkins",
+            "Email": "sarah.j@outlook.com",
+            "Phone": "416-555-3211",
+            "Address": "742 Evergreen Terrace",
+            "Trades": {"Painter": "painter@trades.com", "Drywaller": "drywall@expert.com"},
+            "Products": [
+                {"Item": "Drywall Sheets & Compound", "Cost": 600.00},
+                {"Item": "Custom Crown Moldings", "Cost": 1200.00}
+            ],
+            "Reminders": ["Send deposit receipt confirmation."]
+        }
     }
 
-if 'products_list' not in st.session_state:
-    st.session_state.products_list = [
-        {"Item": "Premium Low-VOC Wall Paint", "Cost": 850.00},
-        {"Item": "Slim Recessed LED Spotlights", "Cost": 450.00},
-        {"Item": "Replacement Window Units", "Cost": 2200.00},
-        {"Item": "Smart Electronic Door Lock", "Cost": 350.00}
-    ]
+if 'active_project_key' not in st.session_state:
+    st.session_state.active_project_key = "John Doe"
 
-# --- SIDEBAR: DATABASE VIEWER & CONTROLS ---
-st.sidebar.header("📁 Active Project Contacts")
-client_name = st.sidebar.text_input("Client Name", value=st.session_state.client_db["Name"])
-client_email = st.sidebar.text_input("Client Email", value=st.session_state.client_db["Email"])
-client_phone = st.sidebar.text_input("Client Phone", value=st.session_state.client_db["Phone"])
-client_address = st.sidebar.text_input("Property Address", value=st.session_state.client_db["Address"])
+# --- SIDEBAR: MULTI-PROJECT NAVIGATION & PROFILE CONTROL ---
+st.sidebar.header("📁 Project Portfolio Navigator")
+
+# Project Switcher Dropdown
+project_list = list(st.session_state.project_registry.keys())
+selected_proj = st.sidebar.selectbox("Select Active Project Workspace:", project_list, index=project_list.index(st.session_state.active_project_key))
+st.session_state.active_project_key = selected_proj
+
+# Fetch active project data shortcut reference
+p_data = st.session_state.project_registry[st.session_state.active_project_key]
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🛠️ Active Project Trades")
-painter_contact = st.sidebar.text_input("Painter Contact", value=st.session_state.trade_db["Painter"])
-electrician_contact = st.sidebar.text_input("Electrician Contact", value=st.session_state.trade_db["Electrician"])
-carpenter_contact = st.sidebar.text_input("Carpenter Contact", value=st.session_state.trade_db["Carpenter"])
+st.sidebar.subheader("👤 Active Profile Details")
+client_name = st.sidebar.text_input("Client Name", value=p_data["Name"])
+client_email = st.sidebar.text_input("Client Email", value=p_data["Email"])
+client_phone = st.sidebar.text_input("Client Phone", value=p_data["Phone"])
+client_address = st.sidebar.text_input("Property Address", value=p_data["Address"])
 
-# Save edits back to state
-st.session_state.client_db = {"Name": client_name, "Email": client_email, "Phone": client_phone, "Address": client_address}
-st.session_state.trade_db = {"Painter": painter_contact, "Electrician": electrician_contact, "Carpenter": carpenter_contact}
+# Write modifications back down to data register
+p_data["Name"] = client_name
+p_data["Email"] = client_email
+p_data["Phone"] = client_phone
+p_data["Address"] = client_address
 
-# --- MAIN INTERFACE ---
-tabs = st.tabs(["🎙️ 1. Voice & Media Intake", "📦 2. Scope & Products", "📅 3. Timeline & Trades", "✉️ 4. Client Comms"])
+st.sidebar.markdown("---")
+st.sidebar.subheader("🛠️ Assigned Project Trades")
+for trade, contact in list(p_data["Trades"].items()):
+    p_data["Trades"][trade] = st.sidebar.text_input(f"{trade} Handler", value=contact)
 
-# --- TAB 1: VOICE & MEDIA INTAKE ---
+# Manual addition buttons on the bottom of navigation panel
+st.sidebar.markdown("---")
+if st.sidebar.button("➕ Create Blank Project Profile"):
+    new_name = f"New Client Profile {len(project_list) + 1}"
+    st.session_state.project_registry[new_name] = {
+        "Name": new_name, "Email": "", "Phone": "", "Address": "",
+        "Trades": {"Painter": "", "Electrician": ""}, "Products": [], "Reminders": []
+    }
+    st.session_state.active_project_key = new_name
+    st.rerun()
+
+
+# --- MAIN HUB INTERFACES ---
+tabs = st.tabs(["🎙️ 1. Global AI Voice Assistant", "📦 2. Scope & Products", "📅 3. Sequential Timeline", "✉️ 4. Client Comms & Reminders"])
+
+# --- TAB 1: GLOBAL AI VOICE ASSISTANT ---
 with tabs[0]:
-    st.header("Site Walkthrough Recording")
-    st.markdown("Tap the microphone button below and speak naturally about the client, the trades needed, and product details.")
+    st.header("🎤 Real-Time Site Audio Command Intake")
+    st.markdown("""
+    **What you can do here:**
+    * **Add new projects:** *"Create a new project profile for Mike Evans, phone 647-555-0900..."*
+    * **Switch workspaces effortlessly:** *"Switch context over to Sarah Jenkins..."*
+    * **Log location tasks & set dynamic automated reminders:** *"Remind me tomorrow morning to check up on the painter's prime coat work on John Doe's job."*
+    """)
     
-    # 🎙️ BROWSER MICROPHONE RECORDER
     audio_record = mic_recorder(
-        start_prompt="🎤 Start Voice Note",
-        stop_prompt="🛑 Stop Recording",
-        key='site_mic'
+        start_prompt="🎤 Start Audio Command Stream",
+        stop_prompt="🛑 Disengage Microphone",
+        key='global_command_mic'
     )
     
     if audio_record:
         st.audio(audio_record['bytes'])
-        st.info("Converting Speech to Text via AI Engine...")
+        st.info("Parsing voice intent signals...")
         
-        # Simulated Voice Note Transcript based on what you want it to process
-        simulated_transcript = (
-            "Hey, create a new project for Sarah Jenkins. Her email is sarah.j@outlook.com, phone number is 416-555-3211. "
-            "The house is at 742 Evergreen Terrace. We need a new Drywaller for this job, their number is drywall@expert.com. "
-            "Also add custom crown moldings to the product list costing 1200 dollars."
+        # Scenario Simulation Selector to demonstrate how the voice engine navigates profiles
+        voice_mode = st.radio(
+            "Select Simulated Voice Intent to execute:",
+            ["Switch to an existing project workspace", "Inject a reminder into a project", "Instantiate a brand new project completely"]
         )
         
-        st.markdown("### 📝 AI Generated Transcript:")
-        st.code(simulated_transcript, language="text")
+        st.markdown("---")
         
-        # Intelligent Processing & Auto-Database Creation Trigger
-        st.success("🤖 AI Parsing Engine Actions Executed:")
-        
-        # 1. Check & Create Client
-        st.session_state.client_db = {
-            "Name": "Sarah Jenkins",
-            "Email": "sarah.j@outlook.com",
-            "Phone": "416-555-3211",
-            "Address": "742 Evergreen Terrace"
-        }
-        st.write("✔️ **Created New Client:** Sarah Jenkins saved to workspace.")
-        
-        # 2. Check & Create Trade
-        st.session_state.trade_db["Drywaller"] = "drywall@expert.com"
-        st.write("✔️ **Created New Trade Slot:** 'Drywaller' (drywall@expert.com) registered.")
-        
-        # 3. Add Custom Product
-        if not any(d['Item'] == 'Custom Crown Moldings' for d in st.session_state.products_list):
-            st.session_state.products_list.append({"Item": "Custom Crown Moldings", "Cost": 1200.00})
-            st.write("✔️ **Added Product:** 'Custom Crown Moldings' ($1,200.00) injected into pricing breakdown.")
+        if voice_mode == "Switch to an existing project workspace":
+            transcript = "Hey app, pull up the project data for Sarah Jenkins right now please."
+            st.code(f"Transcript: \"{transcript}\"", language="text")
             
-        st.warning("🔄 Sidebar details and product lists updated dynamically! Please check the tabs above.")
-
-    st.markdown("---")
-    st.header("Visual Media Upload")
-    uploaded_file = st.file_uploader("Upload optional room photo or video walk-through", type=["jpg", "jpeg", "png", "mp4", "mov"])
-    if uploaded_file is not None:
-        st.success("Media successfully linked to this client profile!")
+            st.session_state.active_project_key = "Sarah Jenkins"
+            st.success("🤖 Context Command Recognized: Automatically shifted workspace focus to **Sarah Jenkins**!")
+            st.rerun()
+            
+        elif voice_mode == "Inject a reminder into a project":
+            transcript = "Remind me tomorrow to check if the painter finished the ceiling inside John Doe's house."
+            st.code(f"Transcript: \"{transcript}\"", language="text")
+            
+            # Intelligently isolate entity 'John Doe' and push reminder to his ledger
+            new_rem = f"[{datetime.date.today() + datetime.timedelta(days=1)}] CRITICAL REMINDER: Confirm if painter finished ceiling panels."
+            if new_rem not in st.session_state.project_registry["John Doe"]["Reminders"]:
+                st.session_state.project_registry["John Doe"]["Reminders"].append(new_rem)
+                
+            st.success("🤖 Intent Extracted: Logged a tomorrow reminder targeting **John Doe's** ledger.")
+            
+        elif voice_mode == "Instantiate a brand new project completely":
+            transcript = "Create a new profile for Mike Evans. Email is mike@evansbuilt.com, address is 99 Blue Jay Way."
+            st.code(f"Transcript: \"{transcript}\"", language="text")
+            
+            st.session_state.project_registry["Mike Evans"] = {
+                "Name": "Mike Evans", "Email": "mike@evansbuilt.com", "Phone": "Unassigned", "Address": "99 Blue Jay Way",
+                "Trades": {"Painter": "painter@trades.com"}, "Products": [{"Item": "Initial Site Material Allocation", "Cost": 500.00}],
+                "Reminders": ["Schedule initial video walkthrough quote inspection."]
+            }
+            st.session_state.active_project_key = "Mike Evans"
+            st.success("🤖 Entity Extracted: Successfully spawned brand new pipeline target **Mike Evans**!")
+            st.rerun()
 
 # --- TAB 2: SCOPE & MULTIPLE PRODUCTS ---
 with tabs[1]:
-    st.header("Project Line Items & Product Costs")
-    st.markdown("Review, modify, or add custom materials and product prices for this specific quote.")
+    st.header(f"Product Costs Ledger: {st.session_state.active_project_key}")
     
-    # Render Dynamic Product Management Table
     updated_products = []
-    for i, product in enumerate(st.session_state.products_list):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            item_name = st.text_input(f"Product/Labor Description #{i+1}", value=product["Item"], key=f"prod_name_{i}")
-        with col2:
-            item_cost = st.number_input(f"Cost ($) #{i+1}", value=float(product["Cost"]), step=50.0, key=f"prod_cost_{i}")
-        updated_products.append({"Item": item_name, "Cost": item_cost})
-    
-    st.session_state.products_list = updated_products
+    if len(p_data["Products"]) == 0:
+        st.warning("No line items initialized yet for this quote.")
+    else:
+        for i, product in enumerate(p_data["Products"]):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                item_name = st.text_input(f"Product Description #{i+1}", value=product["Item"], key=f"p_name_{st.session_state.active_project_key}_{i}")
+            with col2:
+                item_cost = st.number_input(f"Cost ($) #{i+1}", value=float(product["Cost"]), step=50.0, key=f"p_cost_{st.session_state.active_project_key}_{i}")
+            updated_products.append({"Item": item_name, "Cost": item_cost})
+        
+        p_data["Products"] = updated_products
 
-    # Option to manually append a product row
-    if st.button("➕ Add Another Product Line Item"):
-        st.session_state.products_list.append({"Item": "New Product Item", "Cost": 0.00})
+    if st.button("➕ Add Custom Product Line Item"):
+        p_data["Products"].append({"Item": "New Product Item Description", "Cost": 0.00})
         st.rerun()
 
     st.markdown("---")
-    
-    # Financial Calculations
-    subtotal = sum(p["Cost"] for p in st.session_state.products_list)
-    labor_markup = st.number_input("Contractor Markup/Labor Multiplier (%)", value=20)
-    
+    subtotal = sum(p["Cost"] for p in p_data["Products"])
+    labor_markup = st.number_input("Contractor Profit/Labor Markup Ratio (%)", value=20)
     total_quote = subtotal * (1 + (labor_markup / 100))
-    tax_rate = st.checkbox("Apply Regional Sales Tax (13% HST)", value=True)
     
-    final_client_price = total_quote * 1.13 if tax_rate else total_quote
+    final_client_price = total_quote * 1.13
     
     col_stat1, col_stat2 = st.columns(2)
-    col_stat1.metric("Materials Subtotal", f"${subtotal:,.2f}")
-    col_stat2.metric("Total Client Face Price (Inc. Markup & Tax)", f"${final_client_price:,.2f}")
+    col_stat1.metric("Materials Subtotal Base", f"${subtotal:,.2f}")
+    col_stat2.metric("Gross Target Cost (Inc. 13% HST)", f"${final_client_price:,.2f}")
 
-# --- TAB 3: TIMELINE & TRADES ---
+# --- TAB 3: SEQUENTIAL TIMELINE ---
 with tabs[2]:
-    st.header("Sequential Project Timeline")
-    start_date = st.date_input("Project Start Date", datetime.date.today())
+    st.header(f"Sequential Execution Schedule: {st.session_state.active_project_key}")
+    start_date = st.date_input("Target Commencement Date", datetime.date.today())
     
-    schedule = [
-        {"Day": 1, "Task": "Site Protection & Prep", "Trade": "Handyman"},
-        {"Day": 2, "Task": "Window Framework & Install", "Trade": "Carpenter"},
-        {"Day": 3, "Task": "Spotlight & Smart Lock Installation", "Trade": "Electrician"},
-        {"Day": 4, "Task": "Ceiling Priming & Painting Work", "Trade": "Painter"},
-        {"Day": 5, "Task": "Drywall Patching & Prep", "Trade": "Drywaller" if "Drywaller" in st.session_state.trade_db else "Painter"},
-        {"Day": 6, "Task": "Wall Finish Coats & Fine Details", "Trade": "Painter"},
-        {"Day": 7, "Task": "Paint and Compound Curing Window", "Trade": "None"},
-        {"Day": 8, "Task": "Deep Post-Construction Clean-up", "Trade": "Cleaner"},
-    ]
-    
-    st.table(schedule)
-    
-    st.subheader("📲 Trade Dispatches")
-    selected_day = st.selectbox("Select day to dispatch trade notice:", [f"Day {d['Day']}: {d['Task']}" for d in schedule])
-    if st.button("🚀 Dispatch Instructions to Trade"):
-        st.info(f"Notification alert successfully dispatched.")
-
-# --- TAB 4: CLIENT COMMS ---
-with tabs[3]:
-    st.header("Automated Client Communications")
-    current_client = st.session_state.client_db["Name"]
-    
-    st.subheader("1. Project Proposal")
-    proposal_text = f"""Subject: Renovation Proposal for {current_client} - Action Required
-
-Hi {current_client},
-
-Thank you for walking me through your property at {st.session_state.client_db['Address']}. We have put together a comprehensive, sequential construction schedule to execute your home modifications smoothly.
-
-Total Investment: ${final_client_price:,.2f} (including applicable taxes)
-Estimated Duration: 8 Working Days
-
-Please reply directly to this notice to sign off and secure your calendar slot.
-
-Best regards,
-[Your Company Name]"""
-    
-    st.text_area("Review Proposal Layout", value=proposal_text, height=200)
-    if st.button("📧 Send Proposal to Client"):
-        st.success(f"Proposal sent seamlessly to {st.session_state.client_db['Email']}!")
-        
-    st.markdown("---")
-    
-    st.subheader("2. Five-Star Review Request")
-    review_text = f"""Subject: We'd love your feedback, {current_client}! ⭐⭐⭐⭐⭐
-
-Hi {current_client},
-
-The paint is dry and your gorgeous upgraded space is officially yours! 
-
-If you are thrilled with your project execution, would you mind taking 60 seconds to leave us a 5-star review? 
-
-Leave a Review Here: [Insert Your Business Review Link]
-
-Thank you again for choosing us!
-
-Best regards,
-[Your Company Name]"""
-
-    st.text_area("Review Request Layout", value=review_text, height=200)
-    if st.button("⭐ Send Review Request Email"):
-        st.success(f"Review link successfully dispatched to {st.session_state.client_db['Email']}!")
+    # Render custom dynamic milestones depending on the trade contacts present inside the active profile
+    schedule =
