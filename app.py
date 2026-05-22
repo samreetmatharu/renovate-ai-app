@@ -4,12 +4,16 @@ import datetime
 from streamlit_mic_recorder import mic_recorder
 
 # --- APP CONFIGURATION ---
-st.set_page_config(page_title="RenovateAI Pro - Multi-Project Hub", layout="wide", page_icon="🏗️")
+st.set_page_config(page_title="RenovateAI Pro - Enterprise Hub", layout="wide", page_icon="🏗️")
 
-st.title("🏗️ RenovateAI Pro: Multi-Project Workspace")
+st.title("🏗️ RenovateAI Pro: Enterprise Workspace")
 st.caption("A voice-intelligent workspace to manage multiple clients, track sequential trades, and trigger automated follow-ups.")
 
-# --- INITIALIZE DATABASE REGISTER (SESSION STATE) ---
+# --- GET TODAY'S DATE ---
+today_str = datetime.date.today().strftime("%Y-%m-%d")
+tomorrow_str = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+# --- INITIALIZE DATABASE REGISTER (SESSION STATE WITH PIPELINE STAGES) ---
 if 'project_registry' not in st.session_state:
     st.session_state.project_registry = {
         "John Doe": {
@@ -17,6 +21,8 @@ if 'project_registry' not in st.session_state:
             "Email": "client@example.com",
             "Phone": "555-0199",
             "Address": "123 Main St",
+            "Stage": "Quote Sent",  # Options: Yet to Quote, Quote Sent, Active Construction, Completed (Pending Payment), Closed Paid
+            "Trades_Status": "Pending Follow-up", # Options: All Synced, Pending Follow-up
             "Trades": {"Painter": "painter@trades.com", "Electrician": "sparky@trades.com", "Carpenter": "carpenter@trades.com"},
             "Products": [
                 {"Item": "Premium Low-VOC Wall Paint", "Cost": 850.00},
@@ -24,19 +30,38 @@ if 'project_registry' not in st.session_state:
                 {"Item": "Replacement Window Units", "Cost": 2200.00},
                 {"Item": "Smart Electronic Door Lock", "Cost": 350.00}
             ],
-            "Reminders": ["Call John to finalize window frame measurements tomorrow."]
+            "Reminders": [
+                f"[{today_str}] Send revised breakdown to John.",
+                f"[{tomorrow_str}] Call John to finalize window measurements."
+            ]
         },
         "Sarah Jenkins": {
             "Name": "Sarah Jenkins",
             "Email": "sarah.j@outlook.com",
             "Phone": "416-555-3211",
             "Address": "742 Evergreen Terrace",
+            "Stage": "Yet to Quote",
+            "Trades_Status": "All Synced",
             "Trades": {"Painter": "painter@trades.com", "Drywaller": "drywall@expert.com"},
             "Products": [
                 {"Item": "Drywall Sheets & Compound", "Cost": 600.00},
                 {"Item": "Custom Crown Moldings", "Cost": 1200.00}
             ],
-            "Reminders": ["Send deposit receipt confirmation."]
+            "Reminders": [
+                f"[{today_str}] Message dry waller regarding Sarah's job timeline.",
+                "Send deposit receipt confirmation."
+            ]
+        },
+        "Mike Evans": {
+            "Name": "Mike Evans",
+            "Email": "mike@evansbuilt.com",
+            "Phone": "647-555-0900",
+            "Address": "99 Blue Jay Way",
+            "Stage": "Completed (Pending Payment)",
+            "Trades_Status": "All Synced",
+            "Trades": {"Painter": "painter@trades.com"},
+            "Products": [{"Item": "Initial Site Material Allocation", "Cost": 3500.00}],
+            "Reminders": [f"[{today_str}] Call Mike for final project sign-off cheque settlement."]
         }
     }
 
@@ -47,202 +72,32 @@ if 'active_project_key' not in st.session_state:
 if st.session_state.active_project_key not in st.session_state.project_registry:
     st.session_state.active_project_key = list(st.session_state.project_registry.keys())[0]
 
-# --- SIDEBAR: MULTI-PROJECT NAVIGATION & PROFILE CONTROL ---
-st.sidebar.header("📁 Project Portfolio Navigator")
+# Shortcut reference to active project data
+p_data = st.session_state.project_registry[st.session_state.active_project_key]
 
-# Project Switcher Dropdown
+
+# --- SIDEBAR: MULTI-PROJECT NAVIGATION & PROFILE CONTROL ---
+st.sidebar.header("📁 Workspace Focus Switcher")
+
 project_list = list(st.session_state.project_registry.keys())
 selected_proj = st.sidebar.selectbox("Select Active Project Workspace:", project_list, index=project_list.index(st.session_state.active_project_key))
 st.session_state.active_project_key = selected_proj
-
-# Fetch active project data shortcut reference
-p_data = st.session_state.project_registry[st.session_state.active_project_key]
+p_data = st.session_state.project_registry[st.session_state.active_project_key] # Re-bind shortcut
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("👤 Active Profile Details")
-client_name = st.sidebar.text_input("Client Name", value=p_data["Name"])
-client_email = st.sidebar.text_input("Client Email", value=p_data["Email"])
-client_phone = st.sidebar.text_input("Client Phone", value=p_data["Phone"])
-client_address = st.sidebar.text_input("Property Address", value=p_data["Address"])
+st.sidebar.subheader("👤 Profile Parameters")
+p_data["Name"] = st.sidebar.text_input("Client Name", value=p_data["Name"])
+p_data["Email"] = st.sidebar.text_input("Client Email", value=p_data["Email"])
+p_data["Phone"] = st.sidebar.text_input("Client Phone", value=p_data["Phone"])
+p_data["Address"] = st.sidebar.text_input("Property Address", value=p_data["Address"])
 
-# Write modifications back down to data register
-p_data["Name"] = client_name
-p_data["Email"] = client_email
-p_data["Phone"] = client_phone
-p_data["Address"] = client_address
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("🛠️ Assigned Project Trades")
-for trade, contact in list(p_data["Trades"].items()):
-    p_data["Trades"][trade] = st.sidebar.text_input(f"{trade} Handler", value=contact)
-
-# Manual addition buttons on the bottom of navigation panel
-st.sidebar.markdown("---")
-if st.sidebar.button("➕ Create Blank Project Profile"):
-    new_name = f"New Client Profile {len(project_list) + 1}"
-    st.session_state.project_registry[new_name] = {
-        "Name": new_name, "Email": "", "Phone": "", "Address": "",
-        "Trades": {"Painter": "", "Electrician": ""}, "Products": [], "Reminders": []
-    }
-    st.session_state.active_project_key = new_name
-    st.rerun()
-
-
-# --- MAIN HUB INTERFACES ---
-tabs = st.tabs(["🎙️ 1. Global AI Voice Assistant", "📦 2. Scope & Products", "📅 3. Sequential Timeline", "✉️ 4. Client Comms & Reminders"])
-
-# --- TAB 1: GLOBAL AI VOICE ASSISTANT ---
-with tabs[0]:
-    st.header("🎤 Real-Time Site Audio Command Intake")
-    st.markdown("""
-    **What you can do here:**
-    * **Add new projects:** *"Create a new project profile for Mike Evans, phone 647-555-0900..."*
-    * **Switch workspaces effortlessly:** *"Switch context over to Sarah Jenkins..."*
-    * **Log location tasks & set dynamic automated reminders:** *"Remind me tomorrow morning to check up on the painter's prime coat work on John Doe's job."*
-    """)
-    
-    audio_record = mic_recorder(
-        start_prompt="🎤 Start Audio Command Stream",
-        stop_prompt="🛑 Disengage Microphone",
-        key='global_command_mic'
-    )
-    
-    if audio_record:
-        st.audio(audio_record['bytes'])
-        st.info("Parsing voice intent signals...")
-        
-        # Scenario Simulation Selector to demonstrate how the voice engine navigates profiles
-        voice_mode = st.radio(
-            "Select Simulated Voice Intent to execute:",
-            ["Switch to an existing project workspace", "Inject a reminder into a project", "Instantiate a brand new project completely"]
-        )
-        
-        st.markdown("---")
-        
-        if voice_mode == "Switch to an existing project workspace":
-            transcript = "Hey app, pull up the project data for Sarah Jenkins right now please."
-            st.code(f"Transcript: \"{transcript}\"", language="text")
-            
-            st.session_state.active_project_key = "Sarah Jenkins"
-            st.success("🤖 Context Command Recognized: Automatically shifted workspace focus to **Sarah Jenkins**!")
-            st.rerun()
-            
-        elif voice_mode == "Inject a reminder into a project":
-            transcript = "Remind me tomorrow to check if the painter finished the ceiling inside John Doe's house."
-            st.code(f"Transcript: \"{transcript}\"", language="text")
-            
-            # Intelligently isolate entity 'John Doe' and push reminder to his ledger
-            new_rem = f"[{datetime.date.today() + datetime.timedelta(days=1)}] CRITICAL REMINDER: Confirm if painter finished ceiling panels."
-            if new_rem not in st.session_state.project_registry["John Doe"]["Reminders"]:
-                st.session_state.project_registry["John Doe"]["Reminders"].append(new_rem)
-                
-            st.success("🤖 Intent Extracted: Logged a tomorrow reminder targeting **John Doe's** ledger.")
-            
-        elif voice_mode == "Instantiate a brand new project completely":
-            transcript = "Create a new profile for Mike Evans. Email is mike@evansbuilt.com, address is 99 Blue Jay Way."
-            st.code(f"Transcript: \"{transcript}\"", language="text")
-            
-            st.session_state.project_registry["Mike Evans"] = {
-                "Name": "Mike Evans", "Email": "mike@evansbuilt.com", "Phone": "Unassigned", "Address": "99 Blue Jay Way",
-                "Trades": {"Painter": "painter@trades.com"}, "Products": [{"Item": "Initial Site Material Allocation", "Cost": 500.00}],
-                "Reminders": ["Schedule initial video walkthrough quote inspection."]
-            }
-            st.session_state.active_project_key = "Mike Evans"
-            st.success("🤖 Entity Extracted: Successfully spawned brand new pipeline target **Mike Evans**!")
-            st.rerun()
-
-# --- TAB 2: SCOPE & MULTIPLE PRODUCTS ---
-with tabs[1]:
-    st.header(f"Product Costs Ledger: {st.session_state.active_project_key}")
-    
-    updated_products = []
-    if len(p_data["Products"]) == 0:
-        st.warning("No line items initialized yet for this quote.")
-    else:
-        for i, product in enumerate(p_data["Products"]):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                item_name = st.text_input(f"Product Description #{i+1}", value=product["Item"], key=f"p_name_{st.session_state.active_project_key}_{i}")
-            with col2:
-                item_cost = st.number_input(f"Cost ($) #{i+1}", value=float(product["Cost"]), step=50.0, key=f"p_cost_{st.session_state.active_project_key}_{i}")
-            updated_products.append({"Item": item_name, "Cost": item_cost})
-        
-        p_data["Products"] = updated_products
-
-    if st.button("➕ Add Custom Product Line Item"):
-        p_data["Products"].append({"Item": "New Product Item Description", "Cost": 0.00})
-        st.rerun()
-
-    st.markdown("---")
-    subtotal = sum(p["Cost"] for p in p_data["Products"])
-    labor_markup = st.number_input("Contractor Profit/Labor Markup Ratio (%)", value=20)
-    total_quote = subtotal * (1 + (labor_markup / 100))
-    
-    final_client_price = total_quote * 1.13
-    
-    col_stat1, col_stat2 = st.columns(2)
-    col_stat1.metric("Materials Subtotal Base", f"${subtotal:,.2f}")
-    col_stat2.metric("Gross Target Cost (Inc. 13% HST)", f"${final_client_price:,.2f}")
-
-# --- TAB 3: SEQUENTIAL TIMELINE ---
-with tabs[2]:
-    st.header(f"Sequential Execution Schedule: {st.session_state.active_project_key}")
-    start_date = st.date_input("Target Commencement Date", datetime.date.today())
-    
-    # Render custom dynamic milestones based on the trade contacts present inside the active profile
-    schedule = [{"Day": 1, "Task": "Site Isolation & Masking Prep", "Trade": "Handyman Staff"}]
-    day_count = 2
-    for trade in p_data["Trades"].keys():
-        schedule.append({"Day": day_count, "Task": f"Primary Phase Operations for {trade} Work", "Trade": trade})
-        day_count += 1
-    schedule.append({"Day": day_count, "Task": "Deep Site Cleanup & Client Walkthrough Verification", "Trade": "Internal Cleaning crew"})
-    
-    st.table(schedule)
-    
-    st.subheader("📲 Trade Dispatches")
-    selected_day = st.selectbox("Select target operational item to dispatch notification to:", [f"Day {d['Day']}: {d['Task']}" for d in schedule])
-    if st.button("🚀 Send Sequential Dispatch Alert"):
-        st.info("Signal pushed to chosen professional subcontractor communication queue.")
-
-# --- TAB 4: CLIENT COMMS & REMINDERS ---
-with tabs[3]:
-    st.header(f"Communications Suite: {st.session_state.active_project_key}")
-    
-    # Live Reminders Section
-    st.subheader("📅 Active Action Item Reminders")
-    if len(p_data["Reminders"]) == 0:
-        st.info("No active text or call alerts set for this project profile.")
-    else:
-        for idx, reminder in enumerate(p_data["Reminders"]):
-            col_rem, col_del = st.columns([5, 1])
-            col_rem.warning(f"🔔 {reminder}")
-            if col_del.button("❌ Clear", key=f"del_rem_{idx}"):
-                p_data["Reminders"].remove(reminder)
-                st.rerun()
-                
-    # Quick Text Field to manually key in a reminder
-    new_manual_rem = st.text_input("Manually log a reminder alert for this project:")
-    if st.button("💾 Save Reminder"):
-        if new_manual_rem:
-            p_data["Reminders"].append(f"[{datetime.date.today()}] {new_manual_rem}")
-            st.rerun()
-
-    st.markdown("---")
-    st.subheader("📝 Automated Proposal Outreach Layout")
-    
-    proposal_text = f"""Subject: Comprehensive Project Execution Proposal for {p_data['Name']}
-
-Hi {p_data['Name']},
-
-Thank you for walking me through your project at {p_data['Address']}. 
-
-We have established a comprehensive, sequential project breakdown for your review. The total project investment will come out to ${final_client_price:,.2f} inclusive of necessary materials, trade resource scheduling, execution labor, and applicable taxes.
-
-Please review the custom itinerary attached. Respond directly to confirm your confirmation and book your construction slot.
-
-Best regards,
-[Your Contracting Company Name]"""
-    
-    st.text_area("Review Live Email Output Block", value=proposal_text, height=200)
-    if st.button("📧 Dispatch Proposal Instantly"):
-        st.success(f"Project communication dispatched out directly to target: {p_data['Email']}")
+st.sidebar.subheader("⚙️ Project Stage Manager")
+p_data["Stage"] = st.sidebar.selectbox(
+    "Current Project Stage:", 
+    ["Yet to Quote", "Quote Sent", "Active Construction", "Completed (Pending Payment)", "Closed Paid"],
+    index=["Yet to Quote", "Quote Sent", "Active Construction", "Completed (Pending Payment)", "Closed Paid"].index(p_data["Stage"])
+)
+p_data["Trades_Status"] = st.sidebar.selectbox(
+    "Trades Status Notification:", 
+    ["All Synced", "Pending Follow-up"],
+    index=
