@@ -43,7 +43,7 @@ if 'project_registry' not in st.session_state:
 if 'active_project_key' not in st.session_state:
     st.session_state.active_project_key = "John Doe"
 
-# Ensure the active project key actually exists in our registry
+# Safety check: Ensure the active key actually exists in our registry
 if st.session_state.active_project_key not in st.session_state.project_registry:
     st.session_state.active_project_key = list(st.session_state.project_registry.keys())[0]
 
@@ -89,4 +89,11 @@ if st.sidebar.button("➕ Create Blank Project Profile"):
 
 
 # --- MAIN HUB INTERFACES ---
-tabs = st.tabs(
+tabs = st.tabs(["🎙️ 1. Global AI Voice Assistant", "📦 2. Scope & Products", "📅 3. Sequential Timeline", "✉️ 4. Client Comms & Reminders"])
+
+# --- TAB 1: GLOBAL AI VOICE ASSISTANT ---
+with tabs[0]:
+    st.header("🎤 Real-Time Site Audio Command Intake")
+    st.markdown("""
+    **What you can do here:**
+    * **Add new projects:** *"Create a new project profile for Mike Evans, phone 647-555-
