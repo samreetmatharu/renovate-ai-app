@@ -19,6 +19,15 @@ painter_contact = st.sidebar.text_input("Painter Email/Phone", "painter@trades.c
 electrician_contact = st.sidebar.text_input("Electrician Email/Phone", "sparky@trades.com")
 carpenter_contact = st.sidebar.text_input("Carpenter Email/Phone", "carpenter@trades.com")
 
+# --- INITIALIZE VARIABLES GLOBALLY ---
+# Moving these up here prevents the NameError when swapping tabs!
+if 'quoted_price' not in st.session_state:
+    st.session_state.quoted_price = 11200
+if 'tax_rate' not in st.session_state:
+    st.session_state.tax_rate = True
+
+total_with_tax = st.session_state.quoted_price * 1.13 if st.session_state.tax_rate else st.session_state.quoted_price
+
 # --- MAIN INTERFACE ---
 tabs = st.tabs(["📸 1. Scope & Estimate", "📅 2. Timeline & Trades", "✉️ 3. Client Comms"])
 
@@ -36,23 +45,23 @@ with tabs[0]:
             
         st.success("Media successfully processed by AI Engine!")
         
-        st.markdown("---")
-        st.subheader("📝 Generated Proposal Details")
-        
-        # Simulated AI Output based on our previous structured data
-        est_cost = st.number_input("Estimated Total Cost ($)", value=10670)
-        quoted_price = st.number_input("Final Quote to Client ($)", value=11200)
-        tax_rate = st.checkbox("Include HST (13%)", value=True)
-        
-        total_with_tax = quoted_price * 1.13 if tax_rate else quoted_price
-        st.metric(label="Total Client Face Price (Inc. Tax)", value=f"${total_with_tax:,.2f}")
+    st.markdown("---")
+    st.subheader("📝 Generated Proposal Details")
+    
+    # Linked to session state to keep variables persistent across tabs
+    st.number_input("Estimated Total Cost ($)", value=10670, key="est_cost")
+    st.number_input("Final Quote to Client ($)", value=11200, key="quoted_price")
+    st.checkbox("Include HST (13%)", value=True, key="tax_rate")
+    
+    # Recalculate based on live inputs
+    total_with_tax = st.session_state.quoted_price * 1.13 if st.session_state.tax_rate else st.session_state.quoted_price
+    st.metric(label="Total Client Face Price (Inc. Tax)", value=f"${total_with_tax:,.2f}")
 
 # --- TAB 2: TIMELINE & TRADES ---
 with tabs[1]:
     st.header("Sequential Project Timeline")
     start_date = st.date_input("Project Start Date", datetime.date.today())
     
-    # Define sequence based on user's business rule (strictly serial)
     schedule = [
         {"Day": 1, "Task": "Site Protection & Prep", "Trade": "Apprentice/Handyman", "Contact": "Internal"},
         {"Day": 2, "Task": "Window Replacement", "Trade": "Carpenter", "Contact": carpenter_contact},
@@ -76,7 +85,6 @@ with tabs[1]:
 with tabs[2]:
     st.header("Automated Client Communications")
     
-    # 1. The Proposal Email
     st.subheader("1. Project Proposal")
     proposal_text = f"""Subject: Renovation Proposal for Your Space - Action Required
 
@@ -98,7 +106,6 @@ Best regards,
         
     st.markdown("---")
     
-    # 2. Daily Status Update
     st.subheader("2. Daily Progress Update")
     update_day = st.slider("Select Current Day Complete", 1, 8, 2)
     
@@ -122,7 +129,6 @@ Best regards,
 
     st.markdown("---")
 
-    # 3. Five-Star Review Request
     st.subheader("3. Project Completion & Review Request")
     review_text = f"""Subject: We'd love your feedback, {client_name}! ⭐⭐⭐⭐⭐
 
